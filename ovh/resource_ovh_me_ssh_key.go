@@ -47,9 +47,28 @@ func resourceMeSshKey() *schema.Resource {
 func resourceMeSshKeyRead(d *schema.ResourceData, meta interface{}) error {
 	config := meta.(*Config)
 
-	sshKey := &MeSshKeyResponse{}
+	sshKeys := []string{}
+
+	if err := config.OVHClient.Get("/me/sshKey", &sshKeys); err != nil {
+		return fmt.Errorf("Unable to list SSH keys: %w", err)
+	}
 
 	id := d.Id()
+
+	keyNotFound := true
+	for _, k := range sshKeys {
+		if k == id {
+			keyNotFound = false
+		}
+	}
+
+	if keyNotFound {
+		d.SetId("")
+		return nil
+	}
+
+	sshKey := &MeSshKeyResponse{}
+
 	err := config.OVHClient.Get(
 		fmt.Sprintf("/me/sshKey/%s", id),
 		sshKey,
